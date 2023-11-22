@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "docbridge"
+version = "0.0.1"
+authors = [
+  { name="Mark Smith", email="mark.smith@mongodb.com" },
+]
+description = "A thin abstraction layer over BSON documents, to keep your data model agile."
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+  "pymongo[srv]=="
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "Topic :: Database",
+]
