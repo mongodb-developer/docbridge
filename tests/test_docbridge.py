@@ -28,3 +28,20 @@ def test_fallthrough():
             str(v)
             == """Attribute 'a' references the field names 'a', 'b' which are not present."""
         )
+
+
+def test_connection(mongodb):
+    assert (
+        "cherry"
+        in mongodb.cocktaildb.recipes.find_one({"name": "Manhattan"})["instructions"]
+    )
+
+
+def test_transaction(mongodb, transaction):
+    mongodb.cocktaildb.recipes.insert_one(
+        {
+            "_id": "bad_record",
+            "bad_record": 1,
+        },
+        session=transaction,
+    )

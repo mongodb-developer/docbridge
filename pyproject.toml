@@ -12,7 +12,7 @@ description = "A thin abstraction layer over BSON documents, to keep your data m
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
-  "pymongo[srv]=="
+  "pymongo[srv] ~= 4.6.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
