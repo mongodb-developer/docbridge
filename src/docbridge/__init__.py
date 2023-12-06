@@ -14,27 +14,28 @@
 
 from typing import List, Sequence
 
-__all__ = ["Document", "Fallthrough"]
+__all__ = ["Document", "FallthroughField", "Field", "SequenceField"]
 
 _SENTINEL = object()
 NO_DEFAULT = object()
 
 
 class Document:
-    def __init__(self, doc, *, strict=False):
+    def __init__(self, doc, db, strict=False):
         self._doc = doc
+        self._db = db
         self._strict = strict
 
     def __getattr__(self, attr):
         if not self._strict:
-            return getattr(self._doc, attr)
+            return self._doc[attr]
 
 
 def identity(val):
     return val
 
 
-class Simple:
+class Field:
     def __init__(self, field_name=None, default=NO_DEFAULT, transform=None):
         self.field_name = None
         self.transform = identity if transform is None else transform
@@ -53,7 +54,7 @@ class Simple:
             ) from ke
 
 
-class Fallthrough:
+class FallthroughField:
     def __init__(self, field_names: Sequence[str]) -> None:
         self.field_names = field_names
 
@@ -71,3 +72,23 @@ class Fallthrough:
     def __set_name__(self, owner, name):
         print(f"Name set to {name}")
         self.name = name
+
+
+class SequenceField:
+    def __init__(self, type, field_name=None):
+        self._type = type
+        self.field_name = field_name
+
+    def __get__(self, ob, cls):
+        try:
+            print("Transforming items:", ob._doc[self.field_name])
+            return [self._type(item, ob._db) for item in ob._doc[self.field_name]]
+        except KeyError as ke:
+            raise ValueError(
+                f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
+            ) from ke
+
+    def __set_name__(self, owner, name):
+        self.name = name
+        if self.field_name is None:
+            self.field_name = name

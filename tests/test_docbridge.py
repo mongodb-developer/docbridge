@@ -43,30 +43,30 @@ manhattan_data = {
 
 def test_cocktails():
     class Cocktail(Document):
-        name = Fallthrough(field_names=["name", "cocktail_name"])
+        name = FallthroughField(field_names=["name", "cocktail_name"])
 
-    manhattan = Cocktail(manhattan_data)
+    manhattan = Cocktail(manhattan_data, None)
     assert manhattan.name == "Manhattan"
 
 
 def test_fallthrough():
     class FallthroughClass(Document):
-        a = Fallthrough(["a", "b"])
+        a = FallthroughField(["a", "b"])
 
-    myc = FallthroughClass({"a": "the_a_value"})
+    myc = FallthroughClass({"a": "the_a_value"}, None)
     assert myc.a == "the_a_value"
 
-    myc = FallthroughClass({"a": None})
+    myc = FallthroughClass({"a": None}, None)
     assert myc.a == None
 
-    myc = FallthroughClass({"a": "the_a_value", "b": "the_b_value"})
+    myc = FallthroughClass({"a": "the_a_value", "b": "the_b_value"}, None)
     assert myc.a == "the_a_value"
 
-    myc = FallthroughClass({"b": "the_b_value"})
+    myc = FallthroughClass({"b": "the_b_value"}, None)
     assert myc.a == "the_b_value"
 
     try:
-        myc = FallthroughClass({"c": "not_in_the_cascade"})
+        myc = FallthroughClass({"c": "not_in_the_cascade"}, None)
         assert myc.a == "should not be evaluated"
         fail()
     except ValueError as v:
@@ -94,3 +94,46 @@ def test_update_mongodb(mongodb, rollback_session):
         )
         != None
     )
+
+
+def test_sequence_field(mongodb):
+    sample_profile = {
+        "_id": {"$oid": "657072b56731c9e580e9dd6f"},
+        "user_id": "4",
+        "user_name": "@tara86",
+        "full_name": "Bradley Olsen",
+        "birth_date": {"$date": {"$numberLong": "1502064000000"}},
+        "email": "elizabeth92@yahoo.com",
+        "bio": "Discussion maintain watch computer impact tree situation. Vote know dream strong cause recently.",
+        "follower_count": {"$numberInt": "11"},
+        "followers": [
+            {
+                "_id": {"$oid": "657072b76731c9e580e9ddc5"},
+                "user_id": "89",
+                "user_name": "@christopherespinoza",
+                "bio": "Require father citizen during. Nearly set of.",
+            },
+            {
+                "_id": {"$oid": "657072b56731c9e580e9dd72"},
+                "user_id": "6",
+                "user_name": "@karenwilkins",
+                "bio": "Each right different describe indicate scientist short look. Turn town either decade.",
+            },
+            {
+                "_id": {"$oid": "657072b76731c9e580e9ddb7"},
+                "user_id": "75",
+                "user_name": "@tonymartinez",
+                "bio": "Structure stage religious fund test. How eight large participant will morning first.",
+            },
+        ],
+    }
+
+    class Follower(Document):
+        _id = Field(transform=str)
+
+    class Profile(Document):
+        _id = Field(transform=str)
+        followers = SequenceField(type=Follower)
+
+    profile = Profile(sample_profile, None)
+    assert isinstance(profile.followers[0], Follower)
