@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+
+from datetime import datetime
+from itertools import islice
+import os
+import random
+import sys
+
+from faker import Faker
+from pymongo import MongoClient
+from tqdm import tqdm
+
+
+def take(i, n):
+    try:
+        for _ in range(n):
+            yield next(i)
+    except StopIteration:
+        pass
+
+
+def main(argv=sys.argv[1:]):
+    client = MongoClient(os.environ["MDB_URI"])
+    db = client.get_database("why")
+    profiles = db.get_collection("profiles")
+    followers = db.get_collection("followers")
+
+    profiles.drop()
+    profiles.create_index({"user_id": 1})
+    profiles.create_index({"user_name": 1})
+    followers.drop()
+    followers.create_index({"user_id": 1})
+
+    NUM_PROFILES = 100
+
+    f = Faker()
+    print("Creating profiles:", file=sys.stderr)
+    for i in tqdm(range(NUM_PROFILES)):
+        p = f.simple_profile()
+        profiles.insert_one(
+            {
+                "user_id": str(i),
+                "user_name": "@" + p["username"],
+                "full_name": p["name"],
+                "birth_date": datetime.combine(p["birthdate"], datetime.min.time()),
+                "email": p["mail"],
+                "bio": f.paragraph(),
+            }
+        )
+
+    print("Adding followers:", file=sys.stderr)
+    # Loop through all the created profiles, and add followers:
+    for profile in tqdm(profiles.find()):
+        follower_count = random.randint(0, min(200, NUM_PROFILES - 1))
+        pipeline = [
+            {
+                "$match": {
+                    "user_id": {
+                        "$ne": profile["user_id"],
+                    }
+                }
+            },
+            {
+                "$sample": {
+                    "size": follower_count,
+                },
+            },
+            {
+                "$project": {
+                    "user_id": 1,
+                    "user_name": 1,
+                    "bio": 1,
+                }
+            },
+        ]
+        selected_followers = profiles.aggregate(pipeline)
+        embedded_followers = list(take(selected_followers, 20))
+        profiles.update_one(
+            {
+                "user_id": profile["user_id"],
+            },
+            {
+                "$set": {
+                    "followers": embedded_followers,
+                    "follower_count": follower_count,
+                },
+            },
+        )
+        while True:
+            joined_followers = list(take(selected_followers, 20))
+            print(len(joined_followers))
+            if len(joined_followers) == 0:
+                break
+            followers.insert_one(
+                {"user_id": profile["user_id"], "followers": joined_followers}
+            )
+
+
+if __name__ == "__main__":
+    main()
