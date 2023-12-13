@@ -86,15 +86,22 @@ I've been developing docbridge on YouTube. You can catch the live streams at 2pm
 
 ## Episode 1: Building a Simple Data Access Layer
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dXXkuLjjHBA?si=Hwl5Z-lLhSGzi8X4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+Introducing my plans for the library, and building out the `Document` class, and the `Simple` and `Fallthrough` classes. (The latter two get renamed later to `Field` and `FallthroughField`)
+
+[![Building a Simple Data Access Layer](https://img.youtube.com/vi/dXXkuLjjHBA/0.jpg)](https://www.youtube.com/watch?v=dXXkuLjjHBA)
+
 
 ## Episode 2: Testing and Publishing a Python Module
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/YvZeA_jvYrY?si=mzQ6zll8RyDrRgBi" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+Writing some Pytest test fixtures that will run tests in a transaction, and roll back any changes to the database. Then (attempting to) publish my module to PyPI!
 
-## Episode 3: Subsets & Joins
+[![Testing and Publishing a Python Module](https://img.youtube.com/vi/X9QqA0alA8Q/0.jpg)](https://www.youtube.com/watch?v=X9QqA0alA8Q)
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/dXXkuLjjHBA?si=sYHgUJ5L7J-3SrT8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+## Episode 3: Subsets & Joins - Part 1
+
+Joins are a fundamental part of data modeling in MongoDB! This episode adds a field type for embedded arrays, and in the next episode it'll be extended to look up data in other collections!
+
+[![Subsets & Joins](https://img.youtube.com/vi/YvZeA_jvYrY/0.jpg)](https://www.youtube.com/watch?v=YvZeA_jvYrY)
 
 [PyMongo]: https://pymongo.readthedocs.io/en/stable/
 [Motor]: https://motor.readthedocs.io/en/stable/
