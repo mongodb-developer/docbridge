@@ -15,6 +15,7 @@
 from pytest import fail
 
 from docbridge import *
+from itertools import islice
 
 manhattan_data = {
     "_id": {"$oid": "63177d736c36240b38778162"},
@@ -136,4 +137,37 @@ def test_sequence_field(mongodb):
         followers = SequenceField(type=Follower)
 
     profile = Profile(sample_profile, None)
-    assert isinstance(profile.followers[0], Follower)
+    assert isinstance(next(profile.followers), Follower)
+
+
+def test_sequence_field_superset(mongodb):
+    class Follower(Document):
+        _id = Field(transform=str)
+
+    class Profile(Document):
+        _id = Field(transform=str)
+        followers = SequenceField(
+            type=Follower,
+            superset_collection="followers",
+            superset_query=[
+                {
+                    "$match": Profile.user_id,
+                },
+                {"$unwind": "$followers"},
+                {"$replaceRoot": {"newRoot": "$followers"}},
+            ],
+        )
+
+        def user_id(self):
+            self.user_id
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    assert profile.user_id == "4"
+    assert profile.full_name == "Deborah White"
+    follower_boundary = islice(profile.followers, 19, 21)
+    last_embed = next(follower_boundary)
+    assert last_embed.user_name == "@nbrown"
+    first_related = next(follower_boundary)
+    print(first_related)
+    assert first_related.user_name == "@hooperchristopher"
