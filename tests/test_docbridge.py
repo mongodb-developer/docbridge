@@ -171,15 +171,48 @@ def test_sequence_field_superset(mongodb):
 
 
 def test_update_field(mongodb, rollback_session):
-    class Follower(Document):
-        _id = Field(transform=str)
-
     class Profile(Document):
-        _id = Field(transform=str)
-        followers = SequenceField(type=Follower)
+        user_id = Field(transform=str.lower)
 
     db = mongodb.get_database("why")
     profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+
     profile.user_id = "TEST_VALUE_4"
-    assert profile.user_id == "TEST_VALUE_4"
-    assert profile._doc["user_id"] == "TEST_VALUE_4"
+    assert profile.user_id == "test_value_4"
+    assert profile._doc["user_id"] == "test_value_4"
+
+    profile.non_existant = "new value"
+    profile.non_existant == "new value"
+    assert profile._doc["non_existant"] == "new value"
+
+
+def test_update_strict_document(mongodb, rollback_session):
+    class Profile(Document, strict=True):
+        user_id = Field(transform=str.lower)
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+
+    # Pre-defined field:
+    profile.user_id = "TEST_VALUE_4"
+
+    assert profile.user_id == "test_value_4"
+    assert profile._doc["user_id"] == "test_value_4"
+
+    try:
+        profile.non_existant = "new value"
+        fail("Should not be able to set dynamic value")
+    except Exception:
+        pass
+
+
+def test_meta():
+    class StrictProfile(Document, strict=True):
+        user_id = Field(transform=str.lower)
+
+    assert StrictProfile._strict == True
+
+    class Profile(Document):
+        user_id = Field(transform=str.lower)
+
+    assert Profile._strict == False

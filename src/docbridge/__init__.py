@@ -25,6 +25,13 @@ _SENTINEL = object()
 NO_DEFAULT = object()
 
 
+class DocumentMeta(type):
+    def __new__(cls, name, bases, dict, strict=False, **kwds):
+        result = super().__new__(cls, name, bases, dict, **kwds)
+        result._strict = strict
+        return result
+
+
 class Document:
     """
     An object wrapper for a BSON document.
@@ -36,9 +43,11 @@ class Document:
     def __init__(self, doc, db, strict=False):
         self._doc = doc
         self._db = db
-        self._strict = strict
 
     def __getattr__(self, attr):
+        if attr == "_doc":
+            print(f"State: {self.__dict__}")
+            return object.__getattribute__(self, attr)
         if not self._strict:
             return self._doc[attr]
         else:
@@ -47,10 +56,17 @@ class Document:
             )
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name not in {"_doc", "_db", "_strict"}:
+        if name in self.__class__.__dict__ or name in {"_doc", "_db"}:
+            super().__setattr__(name, value)
+        elif not self._strict:
+            self._doc[name] = value
+        else:
             raise AttributeError(
                 f"{self.__class__.__name__!r} cannot have instance attributes dynamically assigned."
             )
+
+    def __init_subclass__(cls, /, strict=False):
+        cls._strict = strict
 
 
 def identity(val):
@@ -84,7 +100,7 @@ class Field:
             ) from ke
 
     def __set__(self, ob, value: Any) -> None:
-        ob._doc[self.field_name] = value
+        ob._doc[self.field_name] = self.transform(value)
 
 
 class FallthroughField:
