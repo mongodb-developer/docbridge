@@ -6,7 +6,8 @@ import os
 @pytest.fixture(scope="session")
 def mongodb():
     client = pymongo.MongoClient(os.environ["MDB_URI"])
-    client.admin.command("ping")
+    # TODO: Do something if the value is wrong
+    client.admin.command("ping")["ok"] > 0.0
     return client
 
 

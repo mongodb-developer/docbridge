@@ -14,7 +14,8 @@
 
 from pytest import fail
 
-from docbridge import *
+from docbridge import *  # noqa: F403
+from itertools import islice
 
 manhattan_data = {
     "_id": {"$oid": "63177d736c36240b38778162"},
@@ -136,4 +137,82 @@ def test_sequence_field(mongodb):
         followers = SequenceField(type=Follower)
 
     profile = Profile(sample_profile, None)
-    assert isinstance(profile.followers[0], Follower)
+    assert isinstance(next(profile.followers), Follower)
+
+
+def test_sequence_field_superset(mongodb):
+    class Follower(Document):
+        _id = Field(transform=str)
+
+    class Profile(Document):
+        _id = Field(transform=str)
+        followers = SequenceField(
+            type=Follower,
+            superset_collection="followers",
+            superset_query=lambda ob: [
+                {
+                    "$match": {"user_id": ob.user_id},
+                },
+                {"$unwind": "$followers"},
+                {"$replaceRoot": {"newRoot": "$followers"}},
+            ],
+        )
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    assert profile.user_id == "4"
+    assert profile.full_name == "Deborah White"
+    follower_boundary = islice(profile.followers, 19, 21)
+    last_embed = next(follower_boundary)
+    assert last_embed.user_name == "@nbrown"
+    first_related = next(follower_boundary)
+    print(first_related)
+    assert first_related.user_name == "@hooperchristopher"
+
+
+def test_update_field(mongodb, rollback_session):
+    class Profile(Document):
+        user_id = Field(transform=str.lower)
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+
+    profile.user_id = "TEST_VALUE_4"
+    assert profile.user_id == "test_value_4"
+    assert profile._doc["user_id"] == "test_value_4"
+
+    profile.non_existant = "new value"
+    profile.non_existant == "new value"
+    assert profile._doc["non_existant"] == "new value"
+
+
+def test_update_strict_document(mongodb, rollback_session):
+    class Profile(Document, strict=True):
+        user_id = Field(transform=str.lower)
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+
+    # Pre-defined field:
+    profile.user_id = "TEST_VALUE_4"
+
+    assert profile.user_id == "test_value_4"
+    assert profile._doc["user_id"] == "test_value_4"
+
+    try:
+        profile.non_existant = "new value"
+        fail("Should not be able to set dynamic value")
+    except Exception:
+        pass
+
+
+def test_meta():
+    class StrictProfile(Document, strict=True):
+        user_id = Field(transform=str.lower)
+
+    assert StrictProfile._strict == True
+
+    class Profile(Document):
+        user_id = Field(transform=str.lower)
+
+    assert Profile._strict == False
