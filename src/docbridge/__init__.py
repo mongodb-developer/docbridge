@@ -17,7 +17,7 @@ docbridge - An experimental Object-Document Mapper library, primarily designed f
 """
 
 from itertools import chain
-from typing import List, Sequence, Mapping, Iterable
+from typing import Any, List, Sequence, Mapping, Iterable, Callable
 
 __all__ = ["Document", "FallthroughField", "Field", "SequenceField"]
 
@@ -44,6 +44,12 @@ class Document:
         else:
             raise AttributeError(
                 f"{self.__class__.__name__!r} object has no attribute {attr!r}"
+            )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name not in {"_doc", "_db", "_strict"}:
+            raise AttributeError(
+                f"{self.__class__.__name__!r} cannot have instance attributes dynamically assigned."
             )
 
 
@@ -76,6 +82,9 @@ class Field:
             raise ValueError(
                 f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
             ) from ke
+
+    def __set__(self, ob, value: Any) -> None:
+        ob._doc[self.field_name] = value
 
 
 class FallthroughField:
@@ -114,7 +123,7 @@ class SequenceField:
         type,
         field_name=None,
         superset_collection=None,
-        superset_query=None,
+        superset_query: Callable = None,
     ):
         self._type = type
         self.field_name = field_name
@@ -124,14 +133,17 @@ class SequenceField:
     def __get__(self, ob, cls):
         if self.superset_query is None:
             superset = []
-        elif isinstance(self.superset_query, Mapping):
-            superset = ob._db.get_collection(self.superset_collection).find(
-                self.superset_query
-            )
-        elif isinstance(self.superset_query, Iterable):
-            superset = ob._db.get_collection(self.superset_collection).aggregate(
-                self.superset_query
-            )
+        else:
+            query = self.superset_query(ob)
+            print(query)
+            if isinstance(query, Mapping):
+                superset = ob._db.get_collection(self.superset_collection).find(query)
+            elif isinstance(query, Iterable):
+                superset = ob._db.get_collection(self.superset_collection).aggregate(
+                    query
+                )
+            else:
+                raise Exception("Returned was not a mapping or iterable.")
 
         try:
             return chain(

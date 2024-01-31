@@ -14,7 +14,7 @@
 
 from pytest import fail
 
-from docbridge import *
+from docbridge import *  # noqa: F403
 from itertools import islice
 
 manhattan_data = {
@@ -149,17 +149,14 @@ def test_sequence_field_superset(mongodb):
         followers = SequenceField(
             type=Follower,
             superset_collection="followers",
-            superset_query=[
+            superset_query=lambda ob: [
                 {
-                    "$match": Profile.user_id,
+                    "$match": {"user_id": ob.user_id},
                 },
                 {"$unwind": "$followers"},
                 {"$replaceRoot": {"newRoot": "$followers"}},
             ],
         )
-
-        def user_id(self):
-            self.user_id
 
     db = mongodb.get_database("why")
     profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
@@ -171,3 +168,18 @@ def test_sequence_field_superset(mongodb):
     first_related = next(follower_boundary)
     print(first_related)
     assert first_related.user_name == "@hooperchristopher"
+
+
+def test_update_field(mongodb, rollback_session):
+    class Follower(Document):
+        _id = Field(transform=str)
+
+    class Profile(Document):
+        _id = Field(transform=str)
+        followers = SequenceField(type=Follower)
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    profile.user_id = "TEST_VALUE_4"
+    assert profile.user_id == "TEST_VALUE_4"
+    assert profile._doc["user_id"] == "TEST_VALUE_4"
