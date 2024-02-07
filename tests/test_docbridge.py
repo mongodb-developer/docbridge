@@ -177,6 +177,8 @@ def test_update_field(mongodb, rollback_session):
     db = mongodb.get_database("why")
     profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
 
+    assert isinstance(Profile.user_id, Field)
+
     # Test that storing a configured value stores the (transformed) value on _doc:
     profile.user_id = "TEST_VALUE_4"
     assert profile.user_id == "test_value_4"

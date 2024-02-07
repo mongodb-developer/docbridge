@@ -39,6 +39,8 @@ class Document:
     This class is designed to be subclassed, so that different Fields can be
     configured for attribute lookup.
     """
+    _doc = None
+    _db = None
 
     def __init__(self, doc, db, strict=False):
         self._doc = doc
@@ -46,7 +48,6 @@ class Document:
 
     def __getattr__(self, attr):
         if attr == "_doc":
-            print(f"State: {self.__dict__}")
             return object.__getattribute__(self, attr)
         if not self._strict:
             return self._doc[attr]
@@ -56,7 +57,8 @@ class Document:
             )
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in self.__class__.__dict__ or name in {"_doc", "_db"}:
+        print(self.__class__.__dict__)
+        if hasattr(self.__class__, name):
             super().__setattr__(name, value)
         elif not self._strict:
             self._doc[name] = value
@@ -92,12 +94,15 @@ class Field:
             self.field_name = name
 
     def __get__(self, ob, cls):
-        try:
-            return self.transform(ob._doc[self.field_name])
-        except KeyError as ke:
-            raise ValueError(
-                f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
-            ) from ke
+        if ob is not None:
+            try:
+                return self.transform(ob._doc[self.field_name])
+            except KeyError as ke:
+                raise ValueError(
+                    f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
+                ) from ke
+
+        return self
 
     def __set__(self, ob, value: Any) -> None:
         ob._doc[self.field_name] = self.transform(value)
