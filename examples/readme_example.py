@@ -37,3 +37,25 @@ print(repr(profile.user_id))  # 4 <- This is an int now!
 print(
     repr(profile.follower_count)
 )  # 59 <- You can still access other doc fields as attributes.
+
+# Example 3:
+from docbridge import Document, FallthroughField
+
+
+class UserProfile(Document):
+    id = Field(field_name="_id")  # id maps to the _id doc field.
+    name = FallthroughField(
+        field_names=[
+            "full_name",  # v2
+            "name",  # v1
+        ]
+    )
+    # The `name` attribute will look up the "full_name" field,
+    # and fall back to the "name" if it's missing.
+
+
+profile = UserProfile({"full_name", "Mark Smith"})
+assert profile.name == "Mark Smith"  # Works
+
+profile = UserProfile({"name", "Mark Smith"})
+assert profile.name == "Mark Smith"  # Also works!

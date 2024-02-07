@@ -1,6 +1,6 @@
 # Docbridge
 
-This is an experimental Object-Document Mapping library for MongoDB.
+This is an **experimental** Object-Document Mapping library for MongoDB.
 You can watch it being developed *live* on [MongoDB's YouTube channel](https://www.youtube.com/@MongoDB)!
 
 ## Mission Statement
@@ -80,9 +80,73 @@ print(
 )  # 59 <- You can still access other doc fields as attributes.
 ```
 
+## Fallthrough Fields
+
+There are other types of field, though.
+FallthroughField is one of them.
+It allows you to _try_ to look up a field by one name,
+and if the field is missing,
+it will try other names that it's been configured with.
+
+**Note:** This field type will _probably_ disappear, as I may merge its
+functionality into `Field`.
+
+```python
+from docbridge import Document, FallthroughField
+
+class UserProfile(Document):
+    # The `name` attribute will look up the "full_name" field,
+    # and fall back to the "name" if it's missing.
+    name = FallthroughField(
+        field_names=[
+            "full_name",  # v2
+            "name",  # v1
+        ]
+    )
+
+profile = UserProfile({"full_name", "Mark Smith"})
+assert profile.name == "Mark Smith"  # Works
+
+profile = UserProfile({"name", "Mark Smith"})
+assert profile.name == "Mark Smith"  # Also works!
+```
+
+## The Subset Pattern
+
+Some support already exists for abstracting [MongoDB Design Patterns][mongodb-patterns],
+like the [Subset Pattern][subset].
+The subset pattern preserves document size at a reasonable level by only embedding a subset of related data - for example, only the first 10 followers on a social media profile. The rest of the followers would be stored in their own collection, and loaded only when necessary.
+
+```python
+class Follower(Document):
+    _id = Field(transform=str)
+
+class Profile(Document):
+        _id = Field(transform=str)
+        followers = SequenceField(
+            type=Follower,
+            superset_collection="followers",
+            # The following query will be executed on "followers" if the field
+            # is iterated past the embedded follower subdocuments.
+            superset_query=lambda ob: [
+                {
+                    "$match": {"user_id": ob.user_id},
+                },
+                {"$unwind": "$followers"},
+                {"$replaceRoot": {"newRoot": "$followers"}},
+            ],
+        )
+
+# Print all the profile's followers to the screen,
+# including those in the followers collection:
+profile = Profile(user_data_bson, db=test_db)
+for follower in profile:
+    print(follower.id)
+```
+
 # Live Streams on YouTube
 
-I've been developing docbridge on YouTube. You can catch the live streams at 2pm GMT on Wednesdays (although I'm taking a break over Xmas!), or you can view the recordings:
+I've been developing docbridge on YouTube. You can catch the live streams at 2pm GMT on Wednesdays, or you can view the recordings:
 
 ## Episode 1: Building a Simple Data Access Layer
 
@@ -106,3 +170,5 @@ Joins are a fundamental part of data modeling in MongoDB! This episode adds a fi
 [PyMongo]: https://pymongo.readthedocs.io/en/stable/
 [Motor]: https://motor.readthedocs.io/en/stable/
 [ODM]: https://www.mongodb.com/developer/products/mongodb/mongodb-orms-odms-libraries/
+[subset]: https://www.mongodb.com/blog/post/building-with-patterns-the-subset-pattern
+[mongodb-patterns]: https://www.mongodb.com/blog/post/building-with-patterns-a-summary
