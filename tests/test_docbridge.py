@@ -14,7 +14,7 @@
 
 from pytest import fail
 
-from docbridge import *  # noqa: F403
+from docbridge import Document, Field, FallthroughField, SequenceField
 from itertools import islice
 
 manhattan_data = {
