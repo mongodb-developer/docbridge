@@ -177,10 +177,12 @@ def test_update_field(mongodb, rollback_session):
     db = mongodb.get_database("why")
     profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
 
+    # Test that storing a configured value stores the (transformed) value on _doc:
     profile.user_id = "TEST_VALUE_4"
     assert profile.user_id == "test_value_4"
     assert profile._doc["user_id"] == "test_value_4"
 
+    # Test that storing dynamic attributes stores the value in _doc:
     profile.non_existant = "new value"
     profile.non_existant == "new value"
     assert profile._doc["non_existant"] == "new value"
