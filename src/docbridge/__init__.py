@@ -17,7 +17,7 @@ docbridge - An experimental Object-Document Mapper library, primarily designed f
 """
 
 from itertools import chain
-from typing import Any, List, Sequence, Mapping, Iterable, Callable
+from typing import Any, Sequence, Mapping, Iterable, Callable
 
 __all__ = ["Document", "FallthroughField", "Field", "SequenceField"]
 
@@ -115,6 +115,7 @@ class Field:
     def __set__(self, ob, value: Any) -> None:
         transformed_value = self.transform(value)
         ob._doc[self.field_name] = transformed_value
+        print(f"Setting configured field {self.field_name} to {transformed_value}")
         ob._modified_fields[self.field_name] = transformed_value
 
 
