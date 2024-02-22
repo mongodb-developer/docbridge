@@ -222,11 +222,14 @@ def test_save(mongodb, rollback_session):
 
     db = mongodb.get_database("why")
     profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    # This is a configured field:
     assert profile.user_id == "4"
+    # This is a dynamic field:
     assert profile.user_name == "@tanya15"
     profile.user_name = "new value"
     print(profile._modified_fields)
-    fail()
+    assert "user_name" in profile._modified_fields
+    assert "user_id" in profile._modified_fields
 
 
 def test_meta():
