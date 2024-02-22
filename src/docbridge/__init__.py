@@ -41,10 +41,12 @@ class Document:
     """
     _doc = None
     _db = None
+    _modified_fields = None
 
     def __init__(self, doc, db, strict=False):
         self._doc = doc
         self._db = db
+        self._modified_fields = {}
 
     def __getattr__(self, attr):
         if attr == "_doc":
@@ -57,15 +59,21 @@ class Document:
             )
 
     def __setattr__(self, name: str, value: Any) -> None:
-        print(self.__class__.__dict__)
         if hasattr(self.__class__, name):
             super().__setattr__(name, value)
         elif not self._strict:
             self._doc[name] = value
+            self._modified_fields[name] = value
         else:
             raise AttributeError(
                 f"{self.__class__.__name__!r} cannot have instance attributes dynamically assigned."
             )
+
+    def save(self, collection, match_criteria=None):
+        if match_criteria is None:
+            match_criteria = {"_id": self._doc["_id"]}
+        # self._db.collection.update(match_criteria, {"$set": self._doc})
+        return self._modified_fields
 
     def __init_subclass__(cls, /, strict=False):
         cls._strict = strict
@@ -105,7 +113,9 @@ class Field:
         return self
 
     def __set__(self, ob, value: Any) -> None:
-        ob._doc[self.field_name] = self.transform(value)
+        transformed_value = self.transform(value)
+        ob._doc[self.field_name] = transformed_value
+        ob._modified_fields[self.field_name] = transformed_value
 
 
 class FallthroughField:
@@ -156,7 +166,6 @@ class SequenceField:
             superset = []
         else:
             query = self.superset_query(ob)
-            print(query)
             if isinstance(query, Mapping):
                 superset = ob._db.get_collection(self.superset_collection).find(query)
             elif isinstance(query, Iterable):

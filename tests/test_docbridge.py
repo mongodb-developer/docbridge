@@ -58,7 +58,7 @@ def test_fallthrough():
     assert myc.a == "the_a_value"
 
     myc = FallthroughClass({"a": None}, None)
-    assert myc.a == None
+    assert myc.a is None
 
     myc = FallthroughClass({"a": "the_a_value", "b": "the_b_value"}, None)
     assert myc.a == "the_a_value"
@@ -93,7 +93,7 @@ def test_update_mongodb(mongodb, rollback_session):
         mongodb.docbridge.tests.find_one(
             {"_id": "bad_document"}, session=rollback_session
         )
-        != None
+        is not None
     )
 
 
@@ -183,11 +183,15 @@ def test_update_field(mongodb, rollback_session):
     profile.user_id = "TEST_VALUE_4"
     assert profile.user_id == "test_value_4"
     assert profile._doc["user_id"] == "test_value_4"
+    assert profile._modified_fields["user_id"] == "test_value_4"
+    assert len(profile._modified_fields) == 1
 
     # Test that storing dynamic attributes stores the value in _doc:
     profile.non_existant = "new value"
     profile.non_existant == "new value"
     assert profile._doc["non_existant"] == "new value"
+    assert profile._modified_fields["non_existant"] == "new value"
+    assert len(profile._modified_fields) == 2
 
 
 def test_update_strict_document(mongodb, rollback_session):
@@ -202,6 +206,8 @@ def test_update_strict_document(mongodb, rollback_session):
 
     assert profile.user_id == "test_value_4"
     assert profile._doc["user_id"] == "test_value_4"
+    assert profile._modified_fields["user_id"] == "test_value_4"
+    assert len(profile._modified_fields) == 1
 
     try:
         profile.non_existant = "new value"
@@ -210,13 +216,26 @@ def test_update_strict_document(mongodb, rollback_session):
         pass
 
 
+def test_save(mongodb, rollback_session):
+    class Profile(Document):
+        user_id = Field(transform=str.lower)
+
+    db = mongodb.get_database("why")
+    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    assert profile.user_id == "4"
+    assert profile.user_name == "@tanya15"
+    profile.user_name = "new value"
+    print(profile._modified_fields)
+    fail()
+
+
 def test_meta():
     class StrictProfile(Document, strict=True):
         user_id = Field(transform=str.lower)
 
-    assert StrictProfile._strict == True
+    assert StrictProfile._strict is True
 
     class Profile(Document):
         user_id = Field(transform=str.lower)
 
-    assert Profile._strict == False
+    assert Profile._strict is False
