@@ -16,6 +16,7 @@ from pytest import fail
 
 from docbridge import Document, Field, FallthroughField, SequenceField
 from itertools import islice
+from pprint import pprint
 
 manhattan_data = {
     "_id": {"$oid": "63177d736c36240b38778162"},
@@ -217,19 +218,39 @@ def test_update_strict_document(mongodb, rollback_session):
 
 
 def test_save(mongodb, rollback_session):
+    from bson import ObjectId
+
     class Profile(Document):
         user_id = Field(transform=str.lower)
 
     db = mongodb.get_database("why")
-    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
-    # This is a configured field:
-    assert profile.user_id == "4"
+    profile = Profile(
+        db.get_collection("profiles").find_one(
+            {"user_id": "4"}, session=rollback_session
+        ),
+        db,
+    )
+
     # This is a dynamic field:
     assert profile.user_name == "@tanya15"
-    profile.user_name = "new value"
-    print(profile._modified_fields)
+    profile.user_name = "new name value"
     assert "user_name" in profile._modified_fields
+
+    # This is a configured field:
+    assert profile.user_id == "4"
+    profile.user_id = "new id value"
     assert "user_id" in profile._modified_fields
+
+    profile.save("profiles", session=rollback_session)
+
+    doc = db.get_collection("profiles").find_one(
+        {"user_id": "new id value"}, session=rollback_session
+    )
+    assert doc is not None
+    assert doc["user_id"] == "new id value"
+    assert doc["user_name"] == "new name value"
+
+    assert profile._modified_fields == {}
 
 
 def test_meta():

@@ -69,11 +69,18 @@ class Document:
                 f"{self.__class__.__name__!r} cannot have instance attributes dynamically assigned."
             )
 
-    def save(self, collection, match_criteria=None):
+    def save(self, collection, match_criteria=None, session=None):
         if match_criteria is None:
-            match_criteria = {"_id": self._doc["_id"]}
-        # self._db.collection.update(match_criteria, {"$set": self._doc})
-        return self._modified_fields
+            try:
+                match_criteria = {"_id": self._doc["_id"]}
+            except Exception:
+                raise Exception(
+                    f"Attempt to update a document without _id, without providing `match_criteria`."
+                )
+        result = self._db.get_collection(collection).update_one(
+            match_criteria, {"$set": self._modified_fields}, session=session
+        )
+        self._modified_fields = {}
 
     def __init_subclass__(cls, /, strict=False):
         cls._strict = strict
