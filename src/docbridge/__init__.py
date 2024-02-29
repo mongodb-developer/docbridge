@@ -17,7 +17,7 @@ docbridge - An experimental Object-Document Mapper library, primarily designed f
 """
 
 from itertools import chain
-from typing import Any, List, Sequence, Mapping, Iterable, Callable
+from typing import Any, Sequence, Mapping, Iterable, Callable
 
 __all__ = ["Document", "FallthroughField", "Field", "SequenceField"]
 
@@ -39,14 +39,17 @@ class Document:
     This class is designed to be subclassed, so that different Fields can be
     configured for attribute lookup.
     """
+    _doc = None
+    _db = None
+    _modified_fields = None
 
     def __init__(self, doc, db, strict=False):
         self._doc = doc
         self._db = db
+        self._modified_fields = {}
 
     def __getattr__(self, attr):
         if attr == "_doc":
-            print(f"State: {self.__dict__}")
             return object.__getattribute__(self, attr)
         if not self._strict:
             return self._doc[attr]
@@ -56,14 +59,29 @@ class Document:
             )
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in self.__class__.__dict__ or name in {"_doc", "_db"}:
+        if hasattr(self.__class__, name):
             super().__setattr__(name, value)
         elif not self._strict:
             self._doc[name] = value
+            self._modified_fields[name] = value
         else:
             raise AttributeError(
                 f"{self.__class__.__name__!r} cannot have instance attributes dynamically assigned."
             )
+
+    def save(self, collection, match_criteria=None, session=None):
+        if match_criteria is None:
+            try:
+                match_criteria = {"_id": self._doc["_id"]}
+            except Exception:
+                raise Exception(
+                    "Attempt to update a document without _id, without providing `match_criteria`."
+                )
+        result = self._db.get_collection(collection).update_one(
+            match_criteria, {"$set": self._modified_fields}, session=session
+        )
+        self._modified_fields = {}
+        # TODO: Return something that details the update - error if no document updated?
 
     def __init_subclass__(cls, /, strict=False):
         cls._strict = strict
@@ -92,15 +110,21 @@ class Field:
             self.field_name = name
 
     def __get__(self, ob, cls):
-        try:
-            return self.transform(ob._doc[self.field_name])
-        except KeyError as ke:
-            raise ValueError(
-                f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
-            ) from ke
+        if ob is not None:
+            try:
+                return self.transform(ob._doc[self.field_name])
+            except KeyError as ke:
+                raise ValueError(
+                    f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
+                ) from ke
+
+        return self
 
     def __set__(self, ob, value: Any) -> None:
-        ob._doc[self.field_name] = self.transform(value)
+        transformed_value = self.transform(value)
+        ob._doc[self.field_name] = transformed_value
+        print(f"Setting configured field {self.field_name} to {transformed_value}")
+        ob._modified_fields[self.field_name] = transformed_value
 
 
 class FallthroughField:
@@ -148,10 +172,15 @@ class SequenceField:
 
     def __get__(self, ob, cls):
         if self.superset_query is None:
+            # Use an empty sequence if there are no extra items.
+            # It's still iterable, like a cursor, but immediately exits.
             superset = []
         else:
+            # Call the superset_query callable to obtain the generated query:
             query = self.superset_query(ob)
-            print(query)
+
+            # If the query is a mapping, it's a `find` query, otherwise it's an
+            # aggregation pipeline.
             if isinstance(query, Mapping):
                 superset = ob._db.get_collection(self.superset_collection).find(query)
             elif isinstance(query, Iterable):
@@ -162,6 +191,8 @@ class SequenceField:
                 raise Exception("Returned was not a mapping or iterable.")
 
         try:
+            # Return an iterable that first yields all the embedded items, and
+            # then once that is exhausted, queries the database for more.
             return chain(
                 [self._type(item, ob._db) for item in ob._doc[self.field_name]],
                 (self._type(item, ob._db) for item in superset),

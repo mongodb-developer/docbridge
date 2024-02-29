@@ -14,8 +14,9 @@
 
 from pytest import fail
 
-from docbridge import *  # noqa: F403
+from docbridge import Document, Field, FallthroughField, SequenceField
 from itertools import islice
+from pprint import pprint
 
 manhattan_data = {
     "_id": {"$oid": "63177d736c36240b38778162"},
@@ -58,7 +59,7 @@ def test_fallthrough():
     assert myc.a == "the_a_value"
 
     myc = FallthroughClass({"a": None}, None)
-    assert myc.a == None
+    assert myc.a is None
 
     myc = FallthroughClass({"a": "the_a_value", "b": "the_b_value"}, None)
     assert myc.a == "the_a_value"
@@ -93,7 +94,7 @@ def test_update_mongodb(mongodb, rollback_session):
         mongodb.docbridge.tests.find_one(
             {"_id": "bad_document"}, session=rollback_session
         )
-        != None
+        is not None
     )
 
 
@@ -177,15 +178,21 @@ def test_update_field(mongodb, rollback_session):
     db = mongodb.get_database("why")
     profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
 
+    assert isinstance(Profile.user_id, Field)
+
     # Test that storing a configured value stores the (transformed) value on _doc:
     profile.user_id = "TEST_VALUE_4"
     assert profile.user_id == "test_value_4"
     assert profile._doc["user_id"] == "test_value_4"
+    assert profile._modified_fields["user_id"] == "test_value_4"
+    assert len(profile._modified_fields) == 1
 
     # Test that storing dynamic attributes stores the value in _doc:
     profile.non_existant = "new value"
     profile.non_existant == "new value"
     assert profile._doc["non_existant"] == "new value"
+    assert profile._modified_fields["non_existant"] == "new value"
+    assert len(profile._modified_fields) == 2
 
 
 def test_update_strict_document(mongodb, rollback_session):
@@ -200,6 +207,8 @@ def test_update_strict_document(mongodb, rollback_session):
 
     assert profile.user_id == "test_value_4"
     assert profile._doc["user_id"] == "test_value_4"
+    assert profile._modified_fields["user_id"] == "test_value_4"
+    assert len(profile._modified_fields) == 1
 
     try:
         profile.non_existant = "new value"
@@ -208,13 +217,49 @@ def test_update_strict_document(mongodb, rollback_session):
         pass
 
 
-def test_meta():
-    class StrictProfile(Document, strict=True):
-        user_id = Field(transform=str.lower)
-
-    assert StrictProfile._strict == True
+def test_save(mongodb, rollback_session):
+    from bson import ObjectId
 
     class Profile(Document):
         user_id = Field(transform=str.lower)
 
-    assert Profile._strict == False
+    db = mongodb.get_database("why")
+    profile = Profile(
+        db.get_collection("profiles").find_one(
+            {"user_id": "4"}, session=rollback_session
+        ),
+        db,
+    )
+
+    # This is a dynamic field:
+    assert profile.user_name == "@tanya15"
+    profile.user_name = "new name value"
+    assert "user_name" in profile._modified_fields
+
+    # This is a configured field:
+    assert profile.user_id == "4"
+    profile.user_id = "new id value"
+    assert "user_id" in profile._modified_fields
+
+    profile.save("profiles", session=rollback_session)
+
+    doc = db.get_collection("profiles").find_one(
+        {"user_id": "new id value"}, session=rollback_session
+    )
+    assert doc is not None
+    assert doc["user_id"] == "new id value"
+    assert doc["user_name"] == "new name value"
+
+    assert profile._modified_fields == {}
+
+
+def test_meta():
+    class StrictProfile(Document, strict=True):
+        user_id = Field(transform=str.lower)
+
+    assert StrictProfile._strict is True
+
+    class Profile(Document):
+        user_id = Field(transform=str.lower)
+
+    assert Profile._strict is False
