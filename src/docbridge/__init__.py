@@ -75,12 +75,13 @@ class Document:
                 match_criteria = {"_id": self._doc["_id"]}
             except Exception:
                 raise Exception(
-                    f"Attempt to update a document without _id, without providing `match_criteria`."
+                    "Attempt to update a document without _id, without providing `match_criteria`."
                 )
         result = self._db.get_collection(collection).update_one(
             match_criteria, {"$set": self._modified_fields}, session=session
         )
         self._modified_fields = {}
+        # TODO: Return something that details the update - error if no document updated?
 
     def __init_subclass__(cls, /, strict=False):
         cls._strict = strict
@@ -171,9 +172,15 @@ class SequenceField:
 
     def __get__(self, ob, cls):
         if self.superset_query is None:
+            # Use an empty sequence if there are no extra items.
+            # It's still iterable, like a cursor, but immediately exits.
             superset = []
         else:
+            # Call the superset_query callable to obtain the generated query:
             query = self.superset_query(ob)
+
+            # If the query is a mapping, it's a `find` query, otherwise it's an
+            # aggregation pipeline.
             if isinstance(query, Mapping):
                 superset = ob._db.get_collection(self.superset_collection).find(query)
             elif isinstance(query, Iterable):
@@ -184,6 +191,8 @@ class SequenceField:
                 raise Exception("Returned was not a mapping or iterable.")
 
         try:
+            # Return an iterable that first yields all the embedded items, and
+            # then once that is exhausted, queries the database for more.
             return chain(
                 [self._type(item, ob._db) for item in ob._doc[self.field_name]],
                 (self._type(item, ob._db) for item in superset),
