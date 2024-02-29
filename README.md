@@ -165,7 +165,36 @@ Writing some Pytest test fixtures that will run tests in a transaction, and roll
 
 Joins are a fundamental part of data modeling in MongoDB! This episode adds a field type for embedded arrays, and in the next episode it'll be extended to look up data in other collections!
 
-[![Subsets & Joins](https://img.youtube.com/vi/YvZeA_jvYrY/0.jpg)](https://www.youtube.com/watch?v=YvZeA_jvYrY)
+[![Subsets & Joins: Part 1](https://img.youtube.com/vi/YvZeA_jvYrY/0.jpg)](https://www.youtube.com/watch?v=YvZeA_jvYrY)
+
+## Episode 4: Subsets & Joins - Part 2
+
+More metaprogramming to turn a sequence of items that is split across documents and collections into a single Python sequence.
+
+[![Subsets & Joins: Part 2](https://img.youtube.com/vi/TJVLkVUUzGk/0.jpg)](https://www.youtube.com/watch?v=TJVLkVUUzGk)
+
+## Episode 5: Updating Data - Part 1
+
+It's all very well reading data from the database, but it's also nice to be able
+to update it!
+
+[![Updating Data - Part 1](https://img.youtube.com/vi/Ab_NmiKP2_w/0.jpg)](https://www.youtube.com/watch?v=Ab_NmiKP2_w)
+
+## Episode 6: Updating Data - Part 2
+
+It turns out there's quite a lot of work to record and replay updates.
+Let's get on with it!
+
+[![Updating Data - Part 2](https://img.youtube.com/vi/2kIrKr0n9WY/0.jpg)](https://www.youtube.com/watch?v=2kIrKr0n9WY)
+
+## Episode 7: Updating Data - Part 3
+
+It turns out there's quite a lot of work to record and replay updates.
+Let's get on with it!
+
+[![Updating Data - Part 3](https://img.youtube.com/vi/3bW8Zzm8dpE/0.jpg)](https://www.youtube.com/watch?v=3bW8Zzm8dpE)
+
+
 
 [PyMongo]: https://pymongo.readthedocs.io/en/stable/
 [Motor]: https://motor.readthedocs.io/en/stable/
