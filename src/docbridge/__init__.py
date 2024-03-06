@@ -42,8 +42,9 @@ class Document:
     _doc = None
     _db = None
     _modified_fields = None
+    _strict = False
 
-    def __init__(self, doc, db, strict=False):
+    def __init__(self, doc, db):
         self._doc = doc
         self._db = db
         self._modified_fields = {}
@@ -52,11 +53,21 @@ class Document:
         if attr == "_doc":
             return object.__getattribute__(self, attr)
         if not self._strict:
-            return self._doc[attr]
+            return self._wrap(self._doc[attr])
+
         else:
             raise AttributeError(
                 f"{self.__class__.__name__!r} object has no attribute {attr!r}"
             )
+
+    def _wrap(self, value):
+        if isinstance(value, dict):
+            return Document(value, self._db)
+        elif isinstance(value, list):
+            result = [self._wrap(item) for item in value]
+            return result
+        else:
+            return value
 
     def __setattr__(self, name: str, value: Any) -> None:
         if hasattr(self.__class__, name):
