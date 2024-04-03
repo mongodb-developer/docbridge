@@ -19,7 +19,17 @@ class Follower(Document):
 
 class Profile(Document):
     _id = Field(transform=str)
-    followers = SequenceField(type=Follower)
+    followers = SequenceField(
+        type=Follower,
+        superset_collection="followers",
+        superset_query=lambda ob: [
+            {
+                "$match": {"user_id": ob.user_id},
+            },
+            {"$unwind": "$followers"},
+            {"$replaceRoot": {"newRoot": "$followers"}},
+        ],
+    )
 
 
 @app.get("/profiles/{user_id}")
@@ -30,9 +40,10 @@ async def read_item(user_id: str):
         ),
         db,
     )
+
     return {
         "db_id": profile._id,
         "user_id": profile.user_id,
         "full_name": profile.full_name,
-        "followers": [{"db_id": follower._id} for follower in profile.followers],
+        "followers": [{"db_id": follower._id} async for follower in profile.followers],
     }

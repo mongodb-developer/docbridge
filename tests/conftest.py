@@ -1,6 +1,7 @@
 import pytest
 import pymongo
 import os
+import pytest_asyncio
 
 
 @pytest.fixture(scope="session")
@@ -10,7 +11,18 @@ def mongodb():
     """
     client = pymongo.MongoClient(os.environ["MDB_URI"])
     # TODO: Do something if the value is wrong
-    client.admin.command("ping")["ok"] > 0.0
+    assert client.admin.command("ping")["ok"] > 0.5
+    return client
+
+
+@pytest_asyncio.fixture(scope="session")
+async def motor():
+    from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
+
+    client = MotorClient(os.environ["MDB_URI"])
+    result = await client.admin.command("ping")
+    assert result["ok"] > 0.5
+
     return client
 
 

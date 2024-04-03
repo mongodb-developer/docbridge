@@ -204,14 +204,25 @@ class SequenceField:
         try:
             # Return an iterable that first yields all the embedded items, and
             # then once that is exhausted, queries the database for more.
-            return chain(
-                [self._type(item, ob._db) for item in ob._doc[self.field_name]],
-                (self._type(item, ob._db) for item in superset),
+            return self.superset_iterator(
+                ob,
+                ob._doc[self.field_name],
+                superset,
             )
         except KeyError as ke:
             raise ValueError(
                 f"Attribute {self.name!r} is mapped to missing document property {self.field_name!r}."
             ) from ke
+
+    async def superset_iterator(self, ob, embedded, related):
+        for item in embedded:
+            yield self._type(item, ob._db)
+        if isinstance(related, list):
+            for item in related:
+                yield self._type(item, ob._db)
+        else:
+            async for item in related:
+                yield self._type(item, ob._db)
 
     def __set_name__(self, owner, name):
         self.name = name
