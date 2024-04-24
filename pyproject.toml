@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "docbridge"
-version = "0.0.2"
+version = "0.0.3"
 authors = [{ name = "Mark Smith", email = "mark.smith@mongodb.com" }]
 description = "A thin abstraction layer over BSON documents, to keep your data model agile."
 readme = "README.md"
@@ -23,5 +23,5 @@ classifiers = [
 Homepage = "https://github.com/mongodb-developer/docbridge"
 Issues = "https://github.com/mongodb-developer/docbridge/issues"
 
-[tool.ruff]
-exclude = ["examples/*.py"]
+# [tool.ruff]
+# exclude = ["examples/*.py"]

@@ -1,3 +1,0 @@
-fastapi
-motor[srv]
-uvicorn
