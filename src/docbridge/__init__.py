@@ -80,7 +80,7 @@ class Document:
                 f"{self.__class__.__name__!r} cannot have instance attributes dynamically assigned."
             )
 
-    def save(self, collection, match_criteria=None, session=None):
+    async def save(self, collection, match_criteria=None, session=None):
         if match_criteria is None:
             try:
                 match_criteria = {"_id": self._doc["_id"]}

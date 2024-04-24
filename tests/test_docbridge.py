@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 from pytest import fail
+import sys
 
 from docbridge import Document, Field, FallthroughField, SequenceField
 from itertools import islice
@@ -78,12 +80,14 @@ def test_fallthrough():
         )
 
 
-def test_mongodb_client(mongodb):
-    assert mongodb.admin.command("ping")["ok"] == 1.0
+@pytest.mark.asyncio(scope="session")
+async def test_mongodb_client(motor):
+    assert (await motor.admin.command("ping"))["ok"] > 0.5
 
 
-def test_update_mongodb(mongodb, rollback_session):
-    mongodb.docbridge.tests.insert_one(
+@pytest.mark.asyncio(scope="session")
+async def test_update_mongodb(motor, rollback_session):
+    await motor.docbridge.tests.insert_one(
         {
             "_id": "bad_document",
             "description": "If this still exists, then transactions aren't working.",
@@ -91,14 +95,15 @@ def test_update_mongodb(mongodb, rollback_session):
         session=rollback_session,
     )
     assert (
-        mongodb.docbridge.tests.find_one(
+        await motor.docbridge.tests.find_one(
             {"_id": "bad_document"}, session=rollback_session
         )
         is not None
     )
 
 
-def test_sequence_field(mongodb):
+@pytest.mark.asyncio(scope="session")
+async def test_sequence_field(motor):
     sample_profile = {
         "_id": {"$oid": "657072b56731c9e580e9dd6f"},
         "user_id": "4",
@@ -138,10 +143,34 @@ def test_sequence_field(mongodb):
         followers = SequenceField(type=Follower)
 
     profile = Profile(sample_profile, None)
-    assert isinstance(next(profile.followers), Follower)
+    assert isinstance(await anext(profile.followers), Follower)
 
 
-def test_sequence_field_superset(mongodb):
+async def aenumerate(aiterable):
+    i = 0
+    async for x in aiterable:
+        yield i, x
+        i += 1
+
+
+async def aislice(aiterable, *args):
+    s = slice(*args)
+    it = iter(range(s.start or 0, s.stop or sys.maxsize, s.step or 1))
+    try:
+        nexti = next(it)
+    except StopIteration:
+        return
+    async for i, element in aenumerate(aiterable):
+        if i == nexti:
+            yield element
+            try:
+                nexti = next(it)
+            except StopIteration:
+                return
+
+
+@pytest.mark.asyncio(scope="session")
+async def test_sequence_field_superset(motor):
     class Follower(Document):
         _id = Field(transform=str)
 
@@ -159,24 +188,29 @@ def test_sequence_field_superset(mongodb):
             ],
         )
 
-    db = mongodb.get_database("why")
-    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    db = motor.get_database("why")
+    profile = Profile(
+        await db.get_collection("profiles").find_one({"user_id": "4"}), db
+    )
     assert profile.user_id == "4"
     assert profile.full_name == "Deborah White"
-    follower_boundary = islice(profile.followers, 19, 21)
-    last_embed = next(follower_boundary)
+    follower_boundary = aislice(profile.followers, 19, 21)
+    last_embed = await anext(follower_boundary)
+    print(last_embed)
     assert last_embed.user_name == "@nbrown"
-    first_related = next(follower_boundary)
-    print(first_related)
+    first_related = await anext(follower_boundary)
     assert first_related.user_name == "@hooperchristopher"
 
 
-def test_update_field(mongodb, rollback_session):
+@pytest.mark.asyncio(scope="session")
+async def test_update_field(motor, rollback_session):
     class Profile(Document):
         user_id = Field(transform=str.lower)
 
-    db = mongodb.get_database("why")
-    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    db = motor.get_database("why")
+    profile = Profile(
+        await db.get_collection("profiles").find_one({"user_id": "4"}), db
+    )
 
     assert isinstance(Profile.user_id, Field)
 
@@ -195,12 +229,15 @@ def test_update_field(mongodb, rollback_session):
     assert len(profile._modified_fields) == 2
 
 
-def test_update_strict_document(mongodb, rollback_session):
+@pytest.mark.asyncio(scope="session")
+async def test_update_strict_document(motor, rollback_session):
     class Profile(Document, strict=True):
         user_id = Field(transform=str.lower)
 
-    db = mongodb.get_database("why")
-    profile = Profile(db.get_collection("profiles").find_one({"user_id": "4"}), db)
+    db = motor.get_database("why")
+    profile = Profile(
+        await db.get_collection("profiles").find_one({"user_id": "4"}), db
+    )
 
     # Pre-defined field:
     profile.user_id = "TEST_VALUE_4"
@@ -217,15 +254,14 @@ def test_update_strict_document(mongodb, rollback_session):
         pass
 
 
-def test_save(mongodb, rollback_session):
-    from bson import ObjectId
-
+@pytest.mark.asyncio(scope="session")
+async def test_save(motor, rollback_session):
     class Profile(Document):
         user_id = Field(transform=str.lower)
 
-    db = mongodb.get_database("why")
+    db = motor.get_database("why")
     profile = Profile(
-        db.get_collection("profiles").find_one(
+        await db.get_collection("profiles").find_one(
             {"user_id": "4"}, session=rollback_session
         ),
         db,
@@ -241,9 +277,9 @@ def test_save(mongodb, rollback_session):
     profile.user_id = "new id value"
     assert "user_id" in profile._modified_fields
 
-    profile.save("profiles", session=rollback_session)
+    await profile.save("profiles", session=rollback_session)
 
-    doc = db.get_collection("profiles").find_one(
+    doc = await db.get_collection("profiles").find_one(
         {"user_id": "new id value"}, session=rollback_session
     )
     assert doc is not None
