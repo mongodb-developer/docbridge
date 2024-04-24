@@ -17,8 +17,6 @@ from pytest import fail
 import sys
 
 from docbridge import Document, Field, FallthroughField, SequenceField
-from itertools import islice
-from pprint import pprint
 
 manhattan_data = {
     "_id": {"$oid": "63177d736c36240b38778162"},

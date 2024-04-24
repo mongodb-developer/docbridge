@@ -1,5 +1,3 @@
-import pytest
-import pymongo
 import os
 import pytest_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
@@ -18,7 +16,6 @@ from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
 
 @pytest_asyncio.fixture(scope="session")
 async def motor():
-
     client = MotorClient(os.environ["MDB_URI"])
     result = await client.admin.command("ping")
     assert result["ok"] > 0.5

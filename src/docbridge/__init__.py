@@ -16,7 +16,6 @@
 docbridge - An experimental Object-Document Mapper library, primarily designed for teaching.
 """
 
-from itertools import chain
 from typing import Any, Sequence, Mapping, Iterable, Callable
 
 __all__ = ["Document", "FallthroughField", "Field", "SequenceField"]
@@ -39,6 +38,7 @@ class Document:
     This class is designed to be subclassed, so that different Fields can be
     configured for attribute lookup.
     """
+
     _doc = None
     _db = None
     _modified_fields = None

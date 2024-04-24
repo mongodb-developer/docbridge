@@ -22,3 +22,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/mongodb-developer/docbridge"
 Issues = "https://github.com/mongodb-developer/docbridge/issues"
+
+[tool.ruff]
+exclude = ["examples/*.py"]
