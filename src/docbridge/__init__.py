@@ -88,7 +88,7 @@ class Document:
                 raise Exception(
                     "Attempt to update a document without _id, without providing `match_criteria`."
                 )
-        result = self._db.get_collection(collection).update_one(
+        await self._db.get_collection(collection).update_one(
             match_criteria, {"$set": self._modified_fields}, session=session
         )
         self._modified_fields = {}
