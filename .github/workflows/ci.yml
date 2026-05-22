@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Install integration test dependencies
-        run: pip install pytest pymongo
+        run: pip install pytest pymongo pytest-asyncio
 
       - name: Run integration tests
         env:
