@@ -4,7 +4,7 @@ import os
 
 from fastapi import FastAPI
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
 # from docbridge import Document, Field, SequenceField
 from beanie import Document, init_beanie
 from pydantic import BaseModel, Field
@@ -16,8 +16,8 @@ CONNECTION_STRING = os.environ["MDB_URI"]
 @asynccontextmanager
 async def db_lifespan(app: FastAPI):
     # Startup
-    app.mongodb_client = motor = AsyncIOMotorClient(CONNECTION_STRING)
-    app.database = db = motor.get_database("why")
+    app.mongodb_client = mongo_client = AsyncMongoClient(CONNECTION_STRING)
+    app.database = db = mongo_client.get_database("why")
     ping_response = await db.command("ping")
     if int(ping_response["ok"]) != 1:
         raise Exception("Problem connecting to database cluster.")

@@ -1,5 +1,5 @@
 fastapi
-motor[srv]
+pymongo[srv]
 uvicorn
 jinja2
 beanie
