@@ -1,6 +1,6 @@
 import os
 import pytest_asyncio
-from motor.motor_asyncio import AsyncIOMotorClient as MotorClient
+from pymongo import AsyncMongoClient as MotorClient
 
 
 @pytest_asyncio.fixture(scope="session")
